@@ -1,0 +1,14 @@
+[
+{
+  "directory": "/Users/ethano/p/cpp/chip8/build",
+  "command": "/usr/bin/clang++ -DGRAPHICS_API_OPENGL_33 -DPLATFORM_DESKTOP -DUSE_LIBTYPE_SHARED -isystem /opt/homebrew/include -g -std=gnu++23 -arch arm64 -F/Library/Developer/CommandLineTools/SDKs/MacOSX26.sdk/System/Library/Frameworks  -o CMakeFiles/chip8.dir/src/instruction.cpp.o -c /Users/ethano/p/cpp/chip8/src/instruction.cpp",
+  "file": "/Users/ethano/p/cpp/chip8/src/instruction.cpp",
+  "output": "CMakeFiles/chip8.dir/src/instruction.cpp.o"
+},
+{
+  "directory": "/Users/ethano/p/cpp/chip8/build",
+  "command": "/usr/bin/clang++ -DGRAPHICS_API_OPENGL_33 -DPLATFORM_DESKTOP -DUSE_LIBTYPE_SHARED -isystem /opt/homebrew/include -g -std=gnu++23 -arch arm64 -F/Library/Developer/CommandLineTools/SDKs/MacOSX26.sdk/System/Library/Frameworks  -o CMakeFiles/chip8.dir/src/main.cpp.o -c /Users/ethano/p/cpp/chip8/src/main.cpp",
+  "file": "/Users/ethano/p/cpp/chip8/src/main.cpp",
+  "output": "CMakeFiles/chip8.dir/src/main.cpp.o"
+}
+]
