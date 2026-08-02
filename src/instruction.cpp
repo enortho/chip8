@@ -391,28 +391,24 @@ struct Drw : Instruction {
     auto start_col = state.v_registers.at(v_x) % Chip8Width;
     auto start_row = state.v_registers.at(v_y) % Chip8Height;
 
-    for (int byte_i = 0; byte_i < n; ++byte_i) {
+    for (int byte_i{}; byte_i < n; ++byte_i) {
+      auto row = (start_row + byte_i) % Chip8Height;
       u8 byte = state.memory.at(state.I + byte_i);
-      u8 row_to_draw_this_byte =
-        (start_row + byte_i) % Chip8Height; // each byte on a different row
+      for (int bit{}; bit < 8; ++bit) {
+        auto col = (start_col + bit) % Chip8Width;
+        u8 mask = 1 << (7 - bit);
+        bool new_pixel = (mask & byte) != 0;
+        
+        bool &screen_pixel = state.screen.at(row * Chip8Width + col);
+        bool old_screen_pixel = screen_pixel;
 
-      constexpr int bits_per_byte = 8;
-      for (int bit_index = 0; bit_index < bits_per_byte; ++bit_index) {
-        auto col_to_draw_at = (start_col + bit_index) % Chip8Width;
-        auto byte_index_to_draw_at = row_to_draw_this_byte * Chip8Width +
-                                     (col_to_draw_at / bits_per_byte);
-        u8 thing_to_xor_in = 1 << (bits_per_byte - bit_index);
+        screen_pixel = screen_pixel ^ new_pixel;
 
-        u8 &current_byte_in_memory = state.memory.at(byte_index_to_draw_at);
-        u8 changed_byte_in_memory = thing_to_xor_in ^ current_byte_in_memory;
-
-        some_pixel_erased = some_pixel_erased ||
-                            (changed_byte_in_memory < current_byte_in_memory);
-
-        current_byte_in_memory = changed_byte_in_memory;        
+        if (old_screen_pixel && !screen_pixel) {
+          some_pixel_erased = true;
+        }
       }
     }
-    
 
 
     if (some_pixel_erased) {

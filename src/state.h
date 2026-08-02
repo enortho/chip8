@@ -32,7 +32,7 @@ struct State {
 
   static const u16 DIGIT_SPRITES_START_ADDRESS{0x0A0};
   using digit_sprite = std::array<u8, 5>;  // each byte is a row
-  std::array<u8, Chip8Width * Chip8Height> screen{};
+  std::array<bool, Chip8Width * Chip8Height> screen{};
 
   static const u8 NOT_WAITING = 0x10;
   u8 waiting_for_key_press{NOT_WAITING}; // the register (0-F) to put the value of the next keypress in, or NOT_WAITING

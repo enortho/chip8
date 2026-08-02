@@ -17,7 +17,7 @@ using u8 = std::uint8_t;
 using u16 = std::uint16_t;
 
 
-constexpr int instructions_per_frame = 400;
+constexpr int instructions_per_frame = 100;
 
 auto main(void) -> int {
   const int pixel_size = 16;

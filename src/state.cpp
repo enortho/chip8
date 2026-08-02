@@ -39,7 +39,9 @@ auto State::step() -> bool {
   }
   assert(current_instruction != nullptr); // make sure it decoded correctly
 
-  std::println("0x{:X} | {}", PC, current_instruction->show());
+  if constexpr (false) {
+      std::println("0x{:X} | {}", PC, current_instruction->show());
+  }
   // execute the instruction
   Instruction::PcAction pc_action = current_instruction->act(*this);
 
@@ -122,25 +124,37 @@ auto State::load_digit_sprites() -> void {
   for (int digit_i = 0; const auto &digit : digits) {
     auto offset = digit_size * digit_i + State::DIGIT_SPRITES_START_ADDRESS;
     std::copy(digit.begin(), digit.end(), memory.begin() + offset);
+    ++digit_i;
   }
 }
 
 
 auto State::draw() -> void {
   ClearBackground(RAYWHITE);
-  for (int i = 0; const auto &byte : screen) {
-    auto row_i = i / Chip8Width;
-    auto start_col = i % Chip8Height;
-    for (int i = 0; i < 8; ++i) {
-      auto col = start_col + i;
-      u8 mask = 1 << (8 - i);
-      auto tile = mask & byte;
+  for (int row_i{}; row_i < Chip8Height; ++row_i) {
+    for (int col_i{}; col_i < Chip8Width; ++col_i) {
+      bool tile = screen.at(row_i * Chip8Width + col_i);
+      const Color color = tile ? ::RAYWHITE : ::BLACK;
 
-      Color color = tile ? RAYWHITE : BLACK;
+      auto x = col_i * pixel_size;
+      auto y = row_i * pixel_size;
+      ::DrawRectangle(x, y, pixel_size, pixel_size, color);
+    }
+  }
 
-      auto x = col * pixel_size;
-      auto y = col = row_i * pixel_size;
-      DrawRectangle(x, y, pixel_size, pixel_size, color);
+
+  if constexpr (false) {  
+    // draw debug rows
+    constexpr Color line_color = RED;
+    for (int row_i{}; row_i < Chip8Height; ++row_i) {
+      auto y = row_i * pixel_size;
+      ::DrawLine(0, y, screen_width, y, line_color);
+    }
+
+    // draw cols
+    for (int col_i{}; col_i < Chip8Width; ++col_i) {
+      auto x = col_i * pixel_size;
+      ::DrawLine(x, 0, x, screen_height, line_color);
     }
   }
 }
