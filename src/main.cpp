@@ -17,31 +17,38 @@ using u8 = std::uint8_t;
 using u16 = std::uint16_t;
 
 
-constexpr int instructions_per_frame = 100;
+constexpr int instructions_per_frame = 10;
 
 auto main(void) -> int {
   const int pixel_size = 16;
   State state{pixel_size};
   state.load_rom(std::cin);
-
-  int i = instructions_per_frame;
-  while (i --> 0) {
-    state.step();
-  }
-
-  auto hi = 0x1319;
-
+  
   SetTargetFPS(60);
   InitWindow(state.screen_width, state.screen_height, "Chip8");
+  InitAudioDevice();
 
+  state.sound = ::LoadSound("sounds/thunk.wav");
 
+  bool sound_currently_playing = false;
   while (!WindowShouldClose()) {
     state.poll_input();
     if (state.DT)
       --state.DT;
-    if (state.ST)
+    if (state.ST) {
+      if (!sound_currently_playing) {
+        ::PlaySound(state.sound);
+        sound_currently_playing = true;
+      }
       --state.ST;
+    } else {
+      sound_currently_playing = false;
+    }
 
+
+    if (IsKeyPressed(KEY_SPACE)) {
+      ::PlaySound(state.sound);
+    }
     bool instruction_decode_success = true;
     for (int i = 0; i < instructions_per_frame && instruction_decode_success && state.waiting_for_key_press == State::NOT_WAITING; ++i) {
       instruction_decode_success = state.step();
@@ -53,6 +60,8 @@ auto main(void) -> int {
       EndDrawing();
     }
   }
+  UnloadSound(state.sound);
+  CloseAudioDevice();
   CloseWindow();
 
   return 0;

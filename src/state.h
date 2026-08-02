@@ -2,7 +2,9 @@
 #include <array>
 #include <cstdint>
 #include <istream>
+#include <random>
 #include <unordered_map>
+#include <raylib.h>
 #include "instruction.h"
 
 
@@ -37,11 +39,13 @@ struct State {
   static const u8 NOT_WAITING = 0x10;
   u8 waiting_for_key_press{NOT_WAITING}; // the register (0-F) to put the value of the next keypress in, or NOT_WAITING
 
-  State(int pixel_size)
-      : screen_width{pixel_size * Chip8Width},
-        screen_height{pixel_size * Chip8Height} {
-    load_digit_sprites();
-  } 
+  std::mt19937 random_alg;
+  std::uniform_int_distribution<int> random_generator{0x0, 0xFF};
+
+
+  ::Sound sound;
+  State(int pixel_size);
+  ~State();
 
   auto load_rom(std::istream &stream) -> void;
 

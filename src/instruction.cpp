@@ -2,9 +2,8 @@
 #include <memory>
 #include <string>
 #include <print>
-#include <vector>
+#include <random>
 #include "instruction.h"
-
 #include "state.h"
 
 using u8 = std::uint8_t;
@@ -57,7 +56,7 @@ struct Call : Instruction {
     // increment stack pointer, put PC on the stack, set PC to nnn
     assert(state.SP < 16 - 1);
     ++state.SP;
-    state.stack.at(state.SP) = state.PC;
+    state.stack.at(state.SP) = state.PC + 2; // go to after the current instruction
     return JumpTo{location};
   }
 };
@@ -99,12 +98,12 @@ struct Se : Instruction {
 
   Se(u8 v_x, u8 v_y) : v_x{v_x}, v_y{v_y} {}
   auto show() const -> std::string override {
-    return std::format("5xy0 - SE V{:X}, V{:X}", v_y, v_y);
+    return std::format("5xy0 - SE V{:X}, V{:X}", v_x, v_y);
   }
   
   auto act(State &state) -> PcAction override {
     // skip next instruction if Vx == Vy
-    if (state.v_registers.at(v_x) !=
+    if (state.v_registers.at(v_x) ==
         state.v_registers.at(v_y)) {
       return Next2{};
     }
@@ -235,7 +234,7 @@ struct Sub : Instruction {
 
     state.v_registers[v_x] = (u8)(v_first - v_second);
 
-    if (v_first > v_second) {
+    if (v_first >= v_second) {
       state.v_registers[0xF] = 1;
     } else {
       state.v_registers[0xF] = 0;
@@ -298,12 +297,18 @@ struct Shl : Instruction {
   }
 
   auto act(State &state) -> PcAction override {
-    bool most_significant_bit_of_vx_is_1 = state.v_registers.at(v_x) & (1 << 7);
-    if (most_significant_bit_of_vx_is_1) {
+    u8 &register_ = state.v_registers.at(v_x);
+    u8 old_register = register_;
+    bool most_sig_byte_was_set = (old_register & 0x80) != 0;
+
+    register_ = old_register << 1;
+
+    if (most_sig_byte_was_set) {
       state.v_registers[0xF] = 1;
     } else {
       state.v_registers[0xF] = 0;
     }
+
     return Next{};
   }
 };
@@ -360,7 +365,7 @@ struct Rnd : Instruction {
   }
 
   auto act(State &state) -> PcAction override {
-    u8 random_number = 4; // chosen by a fair, random dice roll
+    u8 random_number = state.random_generator(state.random_alg); // chosen by a fair, random dice roll
                           // guaranteed to be fair
     state.v_registers.at(v_x) = random_number & immediate;
     return Next{};
@@ -493,7 +498,7 @@ struct LdDTVx : Instruction {
   }
 
   auto act(State &state) -> PcAction override {
-    state.ST = state.v_registers.at(v_x);
+    state.DT = state.v_registers.at(v_x);
     return Next{};
   }
 };
@@ -535,7 +540,8 @@ struct LdF : Instruction {
   auto act(State &state) -> PcAction override {
     constexpr int digit_size = sizeof(State::digit_sprite);
     assert(v_x <= 0xF);
-    state.I = State::DIGIT_SPRITES_START_ADDRESS + v_x * digit_size;
+    auto sprite_to_load = state.v_registers.at(v_x);
+    state.I = State::DIGIT_SPRITES_START_ADDRESS + sprite_to_load * digit_size;
     assert(state.I < Chip8MaxAddress);
     return Next{};
   }
@@ -571,7 +577,7 @@ struct LdIV : Instruction {
 
   auto act(State &state) -> PcAction override {
     // load V0 through Vx into memory starting at location I
-    for (int i{}; i < v_x; ++i) {
+    for (int i{}; i <= v_x; ++i) {
       u16 address_to_set = state.I + i;
       assert(addr_in_range(address_to_set));
       state.memory.at(address_to_set) = state.v_registers.at(i);
@@ -590,7 +596,7 @@ struct LdVI : Instruction {
   }
 
   auto act(State &state) -> PcAction override {
-    for (int i{}; i < v_x; ++i) {
+    for (int i{}; i <= v_x; ++i) {
       u16 address_to_read = state.I + i;
       assert(addr_in_range(address_to_read));
       state.v_registers.at(i) = state.memory.at(address_to_read);

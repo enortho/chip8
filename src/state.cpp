@@ -1,9 +1,21 @@
 #include "state.h"
 #include "overloaded.h"
+#include <random>
 #include <raylib.h>
 #include <cassert>
 #include <print>
 #include <variant>
+
+State::State(int pixel_size)
+    : screen_width{pixel_size * Chip8Width},
+      screen_height{pixel_size * Chip8Height} {
+  load_digit_sprites();
+  std::random_device rand;
+  random_alg.seed(rand());
+}
+State::~State() {
+
+}
 
 auto State::load_rom(std::istream &stream) -> void {
   char buffer;
@@ -86,12 +98,14 @@ auto State::poll_input() -> void {
   std::array<KeyboardKey, 16> key_map = {k0, k1, k2, k3, k4, k5, k6, k7,
                                          k8, k9, ka, kb, kc, kd, ke, kf};
   for (int i = 0; const auto &key : key_map) {
+    assert(i <= 0xF);
     auto key_down = ::IsKeyDown(key);
     this->keyboard.at(i) = key_down;
     if (key_down && waiting_for_key_press != NOT_WAITING) {
-      v_registers.at(waiting_for_key_press) = key;
+      v_registers.at(waiting_for_key_press) = i;
       waiting_for_key_press = NOT_WAITING;
     }
+    ++i;
   }
   
   
@@ -99,7 +113,8 @@ auto State::poll_input() -> void {
 
 auto State::load_digit_sprites() -> void {
   const auto start = State::DIGIT_SPRITES_START_ADDRESS;
-
+  // make sure it wont be overridden by the rom
+  assert(State::DIGIT_SPRITES_START_ADDRESS + 15*sizeof(digit_sprite) < Chip8ProgramStart);
   constexpr std::array<digit_sprite, 16> digits = {{
       {0xF0, 0x90, 0x90, 0x90, 0xF0},  // 0
       {0x20, 0x60, 0x20, 0x20, 0x70},  // 1
