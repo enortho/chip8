@@ -16,46 +16,42 @@
 using u8 = std::uint8_t;
 using u16 = std::uint16_t;
 
-enum class ChipKey : u8 {
-  One,
-  Two,
-  Three,
-  C,
-  Four,
-  Five,
-  Six,
-  D,
-  Seven,
-  Eight,
-  Nine,
-  E,
-  A,
-  Zero,
-  B,
-  F
-};
 
 constexpr int instructions_per_frame = 400;
 
 auto main(void) -> int {
-  State state{};
+  const int pixel_size = 16;
+  State state{pixel_size};
   state.load_rom(std::cin);
 
-  constexpr int block_size = 16; // in screen pixels
+  int i = instructions_per_frame;
+  while (i --> 0) {
+    state.step();
+  }
+
+  auto hi = 0x1319;
 
   SetTargetFPS(60);
-  InitWindow(Chip8Width * block_size, Chip8Height * block_size, "Chip8");
+  InitWindow(state.screen_width, state.screen_height, "Chip8");
 
 
   while (!WindowShouldClose()) {
+    state.poll_input();
     if (state.DT)
       --state.DT;
     if (state.ST)
       --state.ST;
-    auto instruction = state.instruction_at(state.PC);
 
-    BeginDrawing();
-    EndDrawing();
+    bool instruction_decode_success = true;
+    for (int i = 0; i < instructions_per_frame && instruction_decode_success && state.waiting_for_key_press == State::NOT_WAITING; ++i) {
+      instruction_decode_success = state.step();
+    }
+
+    if (state.waiting_for_key_press == State::NOT_WAITING) {
+      BeginDrawing();
+      state.draw();
+      EndDrawing();
+    }
   }
   CloseWindow();
 

@@ -2,6 +2,7 @@
 #include <memory>
 #include <string>
 #include <print>
+#include <vector>
 #include "instruction.h"
 
 #include "state.h"
@@ -19,19 +20,21 @@ auto addr_in_range(T chip8_address) -> bool = delete;
 
 
 struct Cls : Instruction {
-  auto virtual show() const -> std::string { return "00E0 - CLS"; }
-  auto virtual act(State &state) -> void {
+  auto virtual show() const -> std::string override { return "00E0 - CLS"; }
+  auto virtual act(State &state) -> PcAction override {
     state.screen.fill(0);
+    return Next{};
   }
 };
 
 struct Ret : Instruction {
   auto show() const -> std::string override { return "0EEE - RET"; }
-  auto act(State &state) -> void override {
-    state.PC = state.stack[state.SP];
+  auto act(State &state) -> PcAction override {
+    auto return_address = state.stack.at(state.SP);
     if (state.SP > 0) {
       --state.SP;
     }
+    return JumpTo{return_address};
   }
 };
 
@@ -39,8 +42,8 @@ struct Jp : Instruction {
   u16 location{}; // location to jump to
   Jp(u16 location) : location{location} {}
   auto show() const -> std::string override { return std::format("1nnn - JP 0x{:X}", location); }
-  auto act(State &state) -> void override {
-    state.PC = location;
+  auto act(State &state) -> PcAction override {
+    return JumpTo{location};
   }
 };
 
@@ -50,12 +53,12 @@ struct Call : Instruction {
   auto show() const -> std::string override {
     return std::format("2nnn - CALL 0x{:X}", location);
   }
-  auto act(State &state) -> void override {
+  auto act(State &state) -> PcAction override {
     // increment stack pointer, put PC on the stack, set PC to nnn
     assert(state.SP < 16 - 1);
     ++state.SP;
-    state.stack[state.SP] = state.PC;
-    state.PC = location;
+    state.stack.at(state.SP) = state.PC;
+    return JumpTo{location};
   }
 };
 
@@ -67,8 +70,9 @@ struct SeImm : Instruction {
   auto act(State &state) -> PcAction override {
     // skip next instruction if Vc = kk
     if (state.v_registers.at(v_x) == immediate) {
-      return Next{};
+      return Next2{};
     }
+    return Next{};
   }
 };
 
@@ -79,11 +83,12 @@ struct SneImm : Instruction {
   auto show() const -> std::string override {
     return std::format("4xkk - SNE V{:X}, 0x{:X}", v_x, immediate);
   }
-  auto act(State &state) -> void override {
+  auto act(State &state) -> PcAction override {
     // skip next instruction if Vx != kk
     if (state.v_registers.at(v_x) != immediate) {
-      state.PC += 2;
+      return Next2{};
     }
+    return Next{};
   }
 };
 
@@ -97,12 +102,13 @@ struct Se : Instruction {
     return std::format("5xy0 - SE V{:X}, V{:X}", v_y, v_y);
   }
   
-  auto act(State &state) -> void override {
+  auto act(State &state) -> PcAction override {
     // skip next instruction if Vx == Vy
     if (state.v_registers.at(v_x) !=
         state.v_registers.at(v_y)) {
-      state.PC += 2;
+      return Next2{};
     }
+    return Next{};
   }
 };
 
@@ -114,8 +120,9 @@ struct LdImm : Instruction {
   auto show() const -> std::string override {
     return std::format("6xkk - LD V{:X}, 0x{:X}", v_x, immediate);
   }
-  auto act(State &state) -> void override {
+  auto act(State &state) -> PcAction override {
     state.v_registers.at(v_x) = immediate;
+    return Next{};
   }
 };
 
@@ -126,8 +133,9 @@ struct AddImm : Instruction {
   auto show() const -> std::string override {
     return std::format("7xkk - ADD V{:X}, 0x{:X}", v_x, immediate);
   }
-  auto act(State &state) -> void override {
+  auto act(State &state) -> PcAction override {
     state.v_registers.at(v_x) += immediate;
+    return Next{};
   }
 };
 
@@ -138,8 +146,9 @@ struct Ld : Instruction {
   auto show() const -> std::string override {
     return std::format("8xy0 - LD V{:X}, V{:X}", v_x, v_y);
   }
-  auto act(State &state) -> void override {
+  auto act(State &state) -> PcAction override {
     state.v_registers.at(v_x) = state.v_registers.at(v_y);
+    return Next{};
   }
 };
 
@@ -151,8 +160,10 @@ struct Or : Instruction {
     return std::format("8xy1 - OR V{:X}, V{:X}", v_x, v_y);
   }
 
-  auto act(State &state) -> void override {
-    state.v_registers.at(v_x) = state.v_registers.at(v_x) | state.v_registers.at(v_y);
+  auto act(State &state) -> PcAction override {
+    state.v_registers.at(v_x) =
+        state.v_registers.at(v_x) | state.v_registers.at(v_y);
+    return Next{};
   }
 };
 
@@ -165,8 +176,10 @@ struct And : Instruction {
     return std::format("8xy2 - AND V{:X}, V{:X}", v_x, v_y);
   }
 
-  auto act(State &state) -> void override {
-    state.v_registers.at(v_x) = state.v_registers.at(v_x) & state.v_registers.at(v_y);
+  auto act(State &state) -> PcAction override {
+    state.v_registers.at(v_x) =
+        state.v_registers.at(v_x) & state.v_registers.at(v_y);
+    return Next{};
   }
 };
 
@@ -178,8 +191,10 @@ struct Xor : Instruction {
     return std::format("8xy3 - XOR V{:X}, V{:X}", v_x, v_y);
   }
 
-  auto act(State &state) -> void override {
-    state.v_registers.at(v_x) = state.v_registers.at(v_x) ^ state.v_registers.at(v_y);
+  auto act(State &state) -> PcAction override {
+    state.v_registers.at(v_x) =
+        state.v_registers.at(v_x) ^ state.v_registers.at(v_y);
+    return Next{};
   }
 };
 
@@ -191,7 +206,7 @@ struct Add : Instruction {
     return std::format("8xy4 - ADD V{:X}, V{:X}", v_x, v_y);
   }
 
-  auto act(State &state) -> void override {
+  auto act(State &state) -> PcAction override {
     u16 result = (u16)state.v_registers.at(v_x) +
       (u16)state.v_registers.at(v_y);
     bool has_carry = result > 255;
@@ -201,6 +216,7 @@ struct Add : Instruction {
 
     u8 carry = has_carry ? 1 : 0;
     state.v_registers[0xF] = carry;
+    return Next{};
   }
 };
 
@@ -212,7 +228,7 @@ struct Sub : Instruction {
     return std::format("8xy5 - SUB V{:X}, V{:X}", v_x, v_y);
   }
 
-  auto act(State &state) -> void override {
+  auto act(State &state) -> PcAction override {
     auto v_first = (i16)state.v_registers.at(v_x);
     auto v_second = (i16)state.v_registers.at(v_y);
     i16 result = v_first - v_second;
@@ -224,6 +240,8 @@ struct Sub : Instruction {
     } else {
       state.v_registers[0xF] = 0;
     }
+
+    return Next{};
   }
 };
 
@@ -234,7 +252,7 @@ struct Shr : Instruction {
   auto show() const -> std::string override {
     return std::format("8xy6 - SHR V{:X}", v_x);
   }
-  auto act(State &state) -> void override {
+  auto act(State &state) -> PcAction override {
     bool least_significant_bit_of_vx_is_1 = v_x & 1;
     if (least_significant_bit_of_vx_is_1) {
       state.v_registers[0xF] = 1;
@@ -243,6 +261,7 @@ struct Shr : Instruction {
     }
 
     state.v_registers.at(v_x) /= 2;
+    return Next{};
   }
 };
 
@@ -254,7 +273,7 @@ struct Subn : Instruction {
     return std::format("8xy7 - SUBN V{:X}, V{:X}", v_x, v_y);
   }
 
-  auto act(State &state) -> void override {
+  auto act(State &state) -> PcAction override {
     auto v_first = (i16)state.v_registers.at(v_x);
     auto v_second = (i16)state.v_registers.at(v_y);
     
@@ -265,6 +284,8 @@ struct Subn : Instruction {
     } else {
       state.v_registers[0xF] = 0;
     }
+
+    return Next{};
   }
 };
 
@@ -276,13 +297,14 @@ struct Shl : Instruction {
     return std::format("8xyE - SHL V{:X}", v_x);
   }
 
-  auto act(State &state) -> void override {
+  auto act(State &state) -> PcAction override {
     bool most_significant_bit_of_vx_is_1 = state.v_registers.at(v_x) & (1 << 7);
     if (most_significant_bit_of_vx_is_1) {
       state.v_registers[0xF] = 1;
     } else {
       state.v_registers[0xF] = 0;
     }
+    return Next{};
   }
 };
 
@@ -294,10 +316,11 @@ struct Sne : Instruction {
     return std::format("9xy0 - SNE V{:X}, V{:X}", v_x, v_y);
   }
 
-  auto act(State &state) -> void override {
+  auto act(State &state) -> PcAction override {
     if (state.v_registers[v_x] != state.v_registers[v_y]) {
-      state.PC += 2;
+      return Next2{};
     }
+    return Next{};
   }
 };
 
@@ -308,8 +331,9 @@ struct LdI : Instruction {
     return std::format("Annn - LD I, 0x{:X}", addr);
   }
 
-  auto act(State &state) -> void override {
+  auto act(State &state) -> PcAction override {
     state.I = addr;
+    return Next{};
   }
 };
 
@@ -320,8 +344,9 @@ struct JpV0 : Instruction {
     return std::format("Bnnn - JP V0, 0x{:X}", addr);
   }
 
-  auto act(State &state) -> void override {
-    state.PC = state.v_registers[0x0] + addr;
+  auto act(State &state) -> PcAction override {
+    u16 address = static_cast<u16>(state.v_registers[0x0]) + addr;
+    return JumpTo{address};
   }
 };
 
@@ -334,10 +359,11 @@ struct Rnd : Instruction {
     return std::format("Cxkk - RND V{:X}, 0x{:X}", v_x, immediate);
   }
 
-  auto act(State &state) -> void override {
+  auto act(State &state) -> PcAction override {
     u8 random_number = 4; // chosen by a fair, random dice roll
                           // guaranteed to be fair
     state.v_registers.at(v_x) = random_number & immediate;
+    return Next{};
   }
 };
 
@@ -352,9 +378,8 @@ struct Drw : Instruction {
   }
 
 
-  auto act(State &state) -> void override {
+  auto act(State &state) -> PcAction override {
     bool some_pixel_erased = false;
-
 
     /*
       (0,0) ... (63, 0)
@@ -363,24 +388,39 @@ struct Drw : Instruction {
       so it's like (col, row)
       to flatten out: col + row*64
      */
-    auto col = state.v_registers[v_x];
-    auto row = state.v_registers[v_y];
-    
-    for (auto i{state.I}; i < state.I + n; ++i) {
-      u8 byte = state.memory[i];
-      auto index_in_screen = col + (row + i) * 64;
-      u8 screen_original_byte = state.screen[index_in_screen];
-      // TODO: MAKE THIS WRAP AROUND
-      state.screen[index_in_screen] ^= byte;
-      
-      some_pixel_erased = some_pixel_erased || (screen_original_byte & (screen_original_byte ^ byte));
+    auto start_col = state.v_registers.at(v_x) % Chip8Width;
+    auto start_row = state.v_registers.at(v_y) % Chip8Height;
+
+    for (int byte_i = 0; byte_i < n; ++byte_i) {
+      u8 byte = state.memory.at(state.I + byte_i);
+      u8 row_to_draw_this_byte =
+        (start_row + byte_i) % Chip8Height; // each byte on a different row
+
+      constexpr int bits_per_byte = 8;
+      for (int bit_index = 0; bit_index < bits_per_byte; ++bit_index) {
+        auto col_to_draw_at = (start_col + bit_index) % Chip8Width;
+        auto byte_index_to_draw_at = row_to_draw_this_byte * Chip8Width +
+                                     (col_to_draw_at / bits_per_byte);
+        u8 thing_to_xor_in = 1 << (bits_per_byte - bit_index);
+
+        u8 &current_byte_in_memory = state.memory.at(byte_index_to_draw_at);
+        u8 changed_byte_in_memory = thing_to_xor_in ^ current_byte_in_memory;
+
+        some_pixel_erased = some_pixel_erased ||
+                            (changed_byte_in_memory < current_byte_in_memory);
+
+        current_byte_in_memory = changed_byte_in_memory;        
+      }
     }
+    
+
 
     if (some_pixel_erased) {
       state.v_registers[0xF] = 1;
     } else {
       state.v_registers[0xF] = 0;
     }
+    return Next{};
   }
 };
 
@@ -392,12 +432,13 @@ struct Skp : Instruction {
     return std::format("Ex9E - SKP V{:X}", v_x);
   }
 
-  auto act(State &state) -> void override {
-    auto key_pressed = true;
-
+  auto act(State &state) -> PcAction override {
+    auto register_value = state.v_registers.at(v_x);
+    auto key_pressed = state.keyboard.at(register_value);
     if (key_pressed) {
-      state.PC += 2;
+      return Next2{};
     }
+    return Next{};
   }
 };
 
@@ -409,11 +450,13 @@ struct Sknp : Instruction {
     return std::format("ExA1 - SKNP V{:X}", v_x);
   }
 
-  auto act(State &state) -> void override {
-    auto key_pressed = true;
+  auto act(State &state) -> PcAction override {
+    auto register_value = state.v_registers.at(v_x);
+    auto key_pressed = state.keyboard.at(register_value);
     if (!key_pressed) {
-      state.PC += 2;
+      return Next2{};
     }
+    return Next{};
   }
 };
 
@@ -425,8 +468,9 @@ struct LdVxDT : Instruction {
     return std::format("Fx07 - LD V{:X}, DT", v_x);
   }
 
-  auto act(State &state) -> void override {
+  auto act(State &state) -> PcAction override {
     state.v_registers[v_x] = state.DT;
+    return Next{};
   }
 };
 
@@ -438,8 +482,9 @@ struct LdKey : Instruction {
     return std::format("Fx0A - LD V{:X}, K", v_x);
   }
 
-  auto act(State &state) -> void override {
-    state.waiting_for_key_press = true;
+  auto act(State &state) -> PcAction override {
+    state.waiting_for_key_press = v_x;
+    return Next{};
   }
 };
 
@@ -451,8 +496,9 @@ struct LdDTVx : Instruction {
     return std::format("Fx15 - LD DT, V{:X}", v_x);
   }
 
-  auto act(State &state) -> void override {
+  auto act(State &state) -> PcAction override {
     state.ST = state.v_registers.at(v_x);
+    return Next{};
   }
 };
 
@@ -464,8 +510,9 @@ struct LdSt : Instruction {
     return std::format("Fx18 - LD ST, V{:X}", v_x);
   }
 
-  auto act(State &state) -> void override {
+  auto act(State &state) -> PcAction override {
     state.ST = state.v_registers.at(v_x);
+    return Next{};
   }
 };
 
@@ -476,8 +523,9 @@ struct AddI : Instruction {
     return std::format("Fx1E - ADD I, V{:X}", v_x);
   }
 
-  auto act(State &state) -> void override {
+  auto act(State &state) -> PcAction override {
     state.I += state.v_registers.at(v_x);
+    return Next{};
   }
 };
 
@@ -488,8 +536,12 @@ struct LdF : Instruction {
     return std::format("Fx29 - LD F, V{:X}", v_x);
   }
 
-  auto act(State &state) -> void override {
-    
+  auto act(State &state) -> PcAction override {
+    constexpr int digit_size = sizeof(State::digit_sprite);
+    assert(v_x <= 0xF);
+    state.I = State::DIGIT_SPRITES_START_ADDRESS + v_x * digit_size;
+    assert(state.I < Chip8MaxAddress);
+    return Next{};
   }
 };
 
@@ -500,7 +552,7 @@ struct LdB : Instruction {
     return std::format("Fx33 - LD B, V{:X}", v_x);
   }
 
-  auto act(State &state) -> void override {
+  auto act(State &state) -> PcAction override {
     auto v_x_val = state.v_registers.at(v_x);
     u8 hundreds = (v_x_val / 100) % 10;
     u8 tens = (v_x_val / 10) % 10;
@@ -509,6 +561,7 @@ struct LdB : Instruction {
     state.memory.at(state.I) = hundreds;
     state.memory.at(state.I + 1) = tens;
     state.memory.at(state.I + 2) = ones;
+    return Next{};
   }
 };
 
@@ -520,13 +573,15 @@ struct LdIV : Instruction {
     return std::format("Fx55 - LD [I], V{:X}", v_x);
   }
 
-  auto act(State &state) -> void override {
+  auto act(State &state) -> PcAction override {
     // load V0 through Vx into memory starting at location I
     for (int i{}; i < v_x; ++i) {
       u16 address_to_set = state.I + i;
       assert(addr_in_range(address_to_set));
       state.memory.at(address_to_set) = state.v_registers.at(i);
     }
+
+    return Next{};
   }
 };
 
@@ -538,12 +593,14 @@ struct LdVI : Instruction {
     return std::format("Fx65 - LD V{:X}, [I]", v_x);
   }
 
-  auto act(State &state) -> void override {
+  auto act(State &state) -> PcAction override {
     for (int i{}; i < v_x; ++i) {
       u16 address_to_read = state.I + i;
       assert(addr_in_range(address_to_read));
       state.v_registers.at(i) = state.memory.at(address_to_read);
     }
+
+    return Next{};
   }
 };
 
