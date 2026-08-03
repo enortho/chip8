@@ -1,20 +1,29 @@
 #include "state.h"
 #include "overloaded.h"
+#include "tone.h"
 #include <random>
 #include <raylib.h>
 #include <cassert>
 #include <print>
 #include <variant>
 
-State::State(int pixel_size)
+State::State(int pixel_size, float freq)
     : screen_width{pixel_size * Chip8Width},
       screen_height{pixel_size * Chip8Height} {
   load_digit_sprites();
   std::random_device rand;
   random_alg.seed(rand());
+
+  ::SetTargetFPS(60);
+  ::InitWindow(screen_width, screen_height, "Chip8");
+  ::InitAudioDevice();
+  Tone tone{freq};
+  sound = tone.to_raylib();
 }
 State::~State() {
-
+  ::UnloadSound(sound);
+  ::CloseAudioDevice();
+  ::CloseWindow();
 }
 
 auto State::load_rom(std::istream &stream) -> void {

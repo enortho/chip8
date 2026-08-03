@@ -7,9 +7,6 @@
 using u16 = std::uint16_t;
 
 
-
-
-
 struct State;
 struct Instruction {
   struct Next {};

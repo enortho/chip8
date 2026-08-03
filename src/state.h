@@ -26,6 +26,7 @@ struct State {
   u8 SP{};  // stack pointer (top of stack)
   u8 DT{};  // delay timer
   u8 ST{};  // sound timer
+  int instructions_per_frame{10};
 
   std::array<u16, Chip8StackSize> stack{};
 
@@ -44,7 +45,7 @@ struct State {
 
 
   ::Sound sound;
-  State(int pixel_size);
+  State(int pixel_size, float sound_frequency);
   ~State();
 
   auto load_rom(std::istream &stream) -> void;
