@@ -32,6 +32,7 @@ jobs:
       - name: Prepare output
         run: |
           mkdir -p dist
+          cp web/index.html dist/index.html
           cp build-web/chip8.html dist/index.html
           cp build-web/chip8.js dist/
           cp build-web/chip8.wasm dist/

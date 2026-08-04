@@ -44,14 +44,17 @@ target_link_libraries(chip8 PRIVATE raylib)
 # === WEB BUILD ==
 # ================
 if (EMSCRIPTEN)
-  set(CMAKE_EXECUTABLE_SUFFIX ".html")
-
+  set(CMAKE_EXECUTABLE_SUFFIX ".js")
+  set(ROMS_DIR "${PROJECT_SOURCE_DIR}/roms")
+  if (EXISTS "${ROMS_DIR}")
+     target_link_options(chip8 PRIVATE
+     "--preload-file=${ROMS_DIR}@/roms"
+     )
+  endif()
   target_link_options(chip8 PRIVATE
     "-sUSE_GLFW=3"
     "-sASYNCIFY"
     "-sTOTAL_MEMORY=67108864"
-    "--preload-file=${PROJECT_SOURCE_DIR}/roms@/roms"
-    "--shell-file=${raylib_SOURCE_DIR}/src/minshell.html"
     "-sEXPORTED_RUNTIME_METHODS=['ccall','FS']"
   )
 endif()
