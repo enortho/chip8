@@ -4,3 +4,11 @@ build/*
 *~
 \#*\#
 .vscode/*
+compile_commands.json
+build-web/
+cmake_install.cmake
+.eglot-root
+CMakeFiles/*
+chip8
+CMakeCache.txt
+Makefile

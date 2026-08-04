@@ -55,4 +55,5 @@ struct State {
   auto poll_input() -> void;
   auto draw() -> void;
   auto load_digit_sprites() -> void;
+  auto reset() -> void;
 };

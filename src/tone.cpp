@@ -15,9 +15,9 @@ Tone::Tone(float freq) : freq{freq} {
 }
 
 
-auto Tone::to_raylib() -> Sound {  
-  Wave wave = {.frameCount = sample_count,
-               .sampleRate = sample_rate,
+auto Tone::to_raylib() -> Sound {
+  Wave wave = {.frameCount = Tone::sample_count,
+               .sampleRate = Tone::sample_rate,
                .sampleSize = 16,
                .channels = 1,
                .data = samples,

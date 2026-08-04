@@ -26,6 +26,20 @@ State::~State() {
   ::CloseWindow();
 }
 
+auto State::reset() -> void {
+  v_registers.fill(0);
+  I = 0;
+  PC = Chip8ProgramStart;
+  SP = 0;
+  DT = 0;
+  ST = 0;
+  stack.fill(0);
+  memory.fill(0);
+  screen.fill(false);
+  waiting_for_key_press = NOT_WAITING;
+  load_digit_sprites();
+}
+
 auto State::load_rom(std::istream &stream) -> void {
   char buffer;
   int i{};
