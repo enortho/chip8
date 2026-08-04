@@ -54,7 +54,7 @@ auto main(void) -> int {
 
   
 #if defined(PLATFORM_WEB)
-  emscripten_set_main_loop_arg(EmscriptenLoop, &state, 60, 1);
+  emscripten_set_main_loop_arg(EmscriptenLoop, &state, 0, 1);
 #else
   while (!::WindowShouldClose()) {
     UpdateDrawFrame(state);
@@ -66,14 +66,25 @@ auto main(void) -> int {
 
 
 auto UpdateDrawFrame(State &state) -> void {
+  // in emscripten, requestAnimationFrame is used to power the loop, so FPS may
+  // not be close to 60. Count the time manually for this to ensure the sound
+  // and delay timers are updated at 60hz
+  static double time_since_last_update = 0.0;
+  constexpr double time_per_update = 1.0 / 60.0;
+
   state.poll_input();
-  if (state.DT)
-    --state.DT;
-  if (state.ST) {
-    if (!::IsSoundPlaying(state.sound)) {
-      ::PlaySound(state.sound);
+
+  time_since_last_update += ::GetFrameTime();
+  while (time_since_last_update >= time_per_update) {
+    if (state.DT)
+      --state.DT;
+    if (state.ST) {
+      if (!::IsSoundPlaying(state.sound)) {
+        ::PlaySound(state.sound);
+      }
+      --state.ST;
     }
-    --state.ST;
+    time_since_last_update -= time_per_update;
   }
 
   bool instruction_decode_success = true;

@@ -13,8 +13,9 @@ State::State(int pixel_size, float freq)
   load_digit_sprites();
   std::random_device rand;
   random_alg.seed(rand());
-
-  ::SetTargetFPS(60);
+#if !defined(PLATFORM_WEB)
+  ::SetTargetFPS(60);  // emscripten does its own thing for framerate
+#endif
   ::InitWindow(screen_width, screen_height, "Chip8");
   ::InitAudioDevice();
   Tone tone{freq};
