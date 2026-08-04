@@ -22,6 +22,15 @@ jobs:
       - uses: mymindstorm/setup-emsdk@v14
         with:
           version: latest
+          actions-cache-folder: 'emsdk-cache'
+
+      - name: Cache build directory
+        uses: actions/cache@v4
+        with:
+          path: build-web
+          key: build-web-${{ runner.os }}-${{ hashFiles('CMakeLists.txt', 'src/**') }}
+          restore-keys: |
+            build-web-${{ runner.os }}-
 
       - name: Configure
         run: emcmake cmake -B build-web -S .
@@ -33,7 +42,6 @@ jobs:
         run: |
           mkdir -p dist
           cp web/index.html dist/index.html
-          cp build-web/chip8.html dist/index.html
           cp build-web/chip8.js dist/
           cp build-web/chip8.wasm dist/
           cp build-web/chip8.data dist/
