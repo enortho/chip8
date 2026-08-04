@@ -12,6 +12,13 @@
       oncontextmenu=event.preventDefault()
       width=1024
       height=512></canvas>
+    <script>
+      var Module = {
+          canvas: document.getElementById('canvas'),
+          print: console.log,
+          printErr: console.error
+      }
+    </script>
     <script src=chip8.js></script>
   </body>
 </html>
