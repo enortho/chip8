@@ -26,7 +26,7 @@ struct State {
   u8 SP{};  // stack pointer (top of stack)
   u8 DT{};  // delay timer
   u8 ST{};  // sound timer
-  int instructions_per_frame{10};
+  int instructions_per_frame{15};
 
   std::array<u16, Chip8StackSize> stack{};
 

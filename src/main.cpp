@@ -1,6 +1,5 @@
 #include <cassert>
 #include <cstdint>
-#include <cstdio>
 #include <iostream>
 #include <raylib.h>
 #include <cstddef>
@@ -31,7 +30,7 @@ auto main(void) -> int {
   // for desktop, read in roms via stdin.
   // eg. ./chip8 < pong.ch8 to run the pong program
 #if defined(PLATFORM_DESKTOP)
-  state.load_rom(stdin);
+  state.load_rom(std::cin);
 #else
   // for web, start with pong as the program
   // users can load in other roms with the ffi in "ffi.h"

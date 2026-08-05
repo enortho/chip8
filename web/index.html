@@ -55,7 +55,7 @@
       <section id="rom-picker">
         <form id="ipf_form" class="rom-picker-method">
           <label for="ipf">Instructions per Frame</label>
-          <input id="ipf" value="20" type="number" />
+          <input id="ipf" value="15" type="number" />
           <button type="submit">Set</button>
         </form>
         <div class="rom-picker-method">
@@ -82,7 +82,7 @@
         <h2>Instructions</h2>
         <p>Select a ROM using the options from the left. Different ROMs run best with different instructions per frame numbers; some are best at 10 IPF, others at 100IPF.</p>
         <p>The emulator inputs are mapped to the keyboard, so use 1234 QWER ASDF ZXCV (a 4x4 grid on North American keyboards) to control it. Control schemes vary by ROM and it takes some playing to figure it out. For pong, it is 1/Q and 4/R to move the left and right paddles up and down, respectively</p>
-        <p>You can find ROMs around on the internet if you search for them, but I also found some and included them in the dropdown. Loading them from a link may or may not work, depending on the server's CORS policy (it doesn't work wit GitHub, for instance).</p>
+        <p>You can find ROMs around on the internet if you search for them, but I also found some and included them in the dropdown. Loading them from a link may or may not work, depending on the server's CORS policy (it doesn't work with GitHub, for instance).</p>
       </section>
     </div>
     <script type="text/javascript">
@@ -174,7 +174,7 @@
             if (!ipf.value) return;
             const instructions_per_frame = Number(ipf.value);
             if (isNaN(instructions_per_frame)) return;
-            em_set_ipf(instructions_per_frame);
+            set_ipf(instructions_per_frame);
         });
       function set_ipf(new_ipf) {
           const sanitized_ipf = Math.floor(Math.abs(new_ipf));
@@ -188,7 +188,7 @@
 
       function set_rom_file(file_name) {
           if (file_name === 'PONG2') {
-              set_ipf(20);
+              set_ipf(15);
           }
           else if (file_name === 'maze.ch8') {
               set_ipf(10);
