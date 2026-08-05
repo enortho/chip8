@@ -5,6 +5,10 @@ set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+if (CMAKE_BUILD_TYPE STREQUAL "Release")
+   set(CMAKE_CXX_FLAGS_RELEASE "-O2 --DNDEBUG")
+endif()
+
 file(GLOB SRC_FILES CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/src/*.cpp)
 add_executable(chip8 ${SRC_FILES})
 
@@ -56,5 +60,13 @@ if (EMSCRIPTEN)
     "-sASYNCIFY"
     "-sTOTAL_MEMORY=67108864"
     "-sEXPORTED_RUNTIME_METHODS=['ccall','FS']"
+  )
+
+  # copy web/index.html into build-web output folder
+  add_custom_command(TARGET chip8 POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+            ${PROJECT_SOURCE_DIR}/web/index.html
+            $<TARGET_FILE_DIR:chip8>/index.html
+    COMMENT "Copying index.html into build output"
   )
 endif()

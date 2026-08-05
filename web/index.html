@@ -4,20 +4,212 @@
     <meta charset="UTF-8" />
     <meta name-"viewport" content="width=device-width, initial-scale=1.0" />
     <title>CHIP-8</title>
+    <style>
+      * {
+          font-family: Trebuchet MS;
+      }
+     h1 {
+          margin: 0;
+          font-size: 3rem;
+      }
+
+      body {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+      }
+
+      #rom-picker {
+          border: 1px solid black;
+          border-radius: 8px;
+          padding: .5rem;
+          width: fit-content;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          height: fit-content;
+      }
+
+     .rom-picker-method {
+         display: flex;
+         flex-direction: column;
+         align-items: center;
+     }
+
+     canvas {
+         margin: .5rem;
+     }
+    </style>
   </head>
   <body>
-    <h1>Hello this is my canvas!</h1>
+      <h1>CHIP-8</h1>
     <canvas
       id="canvas"
       oncontextmenu=event.preventDefault()
       width=1024
-      height=512></canvas>
-    <script>
-      var Module = {
-          canvas: document.getElementById('canvas'),
-          print: console.log,
-          printErr: console.error
+      height=512>
+    </canvas>
+
+
+    <div style="display: flex; gap: 1rem;">
+      <section id="rom-picker">
+        <form id="ipf_form" class="rom-picker-method">
+          <label for="ipf">Instructions per Frame</label>
+          <input id="ipf" value="20" type="number" />
+          <button type="submit">Set</button>
+        </form>
+        <div class="rom-picker-method">
+          <label for="dropdown_picker">Select ROM</label>
+          <select id="dropdown_picker">
+            <option value="PONG2" selected>PONG</option>
+            <option value="maze.ch8">Maze</option>
+            <option value="flightrunner.ch8">Flight Runner</option>
+            <option value="stars.ch8">Stars</option>
+            <option value="Airplane.ch8">Airplane</option>
+          </select>
+        </div>
+        <div class="rom-picker-method">
+          <label for="file_picker">Upload ROM</label>
+          <input id="file_picker" type="file" />
+        </div>
+        <form id="link_picker_form" class="rom-picker-method">
+          <label for="link_picker">Load ROM from link</label>
+          <input size="60" id="link_picker" type="text" placeholder="Enter link...">
+          <button type="submit">Go</button>
+        </form>
+      </section>
+      <section style="max-width: 80ch;">
+        <h2>Instructions</h2>
+        <p>Select a ROM using the options from the left. Different ROMs run best with different instructions per frame numbers; some are best at 10 IPF, others at 100IPF.</p>
+        <p>The emulator inputs are mapped to the keyboard, so use 1234 QWER ASDF ZXCV (a 4x4 grid on North American keyboards) to control it. Control schemes vary by ROM and it takes some playing to figure it out. For pong, it is 1/Q and 4/R to move the left and right paddles up and down, respectively</p>
+        <p>You can find ROMs around on the internet if you search for them, but I also found some and included them in the dropdown. Loading them from a link may or may not work, depending on the server's CORS policy (it doesn't work wit GitHub, for instance).</p>
+      </section>
+    </div>
+    <script type="text/javascript">
+      // glfw webgl build has some code that messes up backspace and tab events for
+      // all input elements on the page. use this hack to override it
+      window.addEventListener('keydown', event => {
+          const tag = event.target.tagName;
+          const isInputField = tag === 'INPUT' || tag === 'TEXTAREA' || event.target.isContentEditable;
+
+          if (isInputField) {
+              // Prevents Emscripten's global GLFW listener from seeing the event
+              event.stopPropagation();
+          }
+      }, true);
+
+      // Do the same for keyup to prevent stuck key states in Emscripten
+      window.addEventListener('keyup', function (event) {
+          const tag = event.target.tagName;
+          if (tag === 'INPUT' || tag === 'TEXTAREA' || event.target.isContentEditable) {
+              event.stopPropagation();
+          }
+      }, true);
+    </script>
+    <script type="text/javascript">      
+        // used by Emscripten
+        var Module = {
+            canvas: document.getElementById('canvas'),
+            print: console.log,
+            printErr: console.error
+        };
+
+        // user uploading a ROM
+        file_picker.addEventListener('change', async e => {
+            if (file_picker.files.length == 0) return;
+            const file = file_picker.files[0];
+            const file_size = file.size;
+
+            if (file.size > (4096 - 512)) {
+                show_error(`File is > 3.5Kb, too large for CHIP-8 ROMs!!!`);
+                return;
+            }
+
+            const file_buffer = await file.arrayBuffer().catch(show_error);
+            const rom_bytes = new Uint8Array(file_buffer);
+
+            Module.ccall('load_rom_from_bytes',
+                null,  // return type
+                ['array', 'number'], // function parameter type
+                [rom_bytes, rom_bytes.length]  // function args
+            );
+        });
+
+        // pick a ROM from the dropdown
+        dropdown_picker.addEventListener('change', e => {
+            
+            const file_name = dropdown_picker.value;
+            set_rom_file(file_name);
+            Module.ccall('load_rom_from_path',
+                null, // return type
+                ['string', 'number'], // function parameter type
+                [file_name, file_name.length],
+            );
+        });
+
+        // load rom from a link
+        link_picker_form.addEventListener('submit', async e => {
+            e.preventDefault();
+            const link = link_picker.value;
+            if (!link) return;
+
+            const rom_buffer =
+                  await fetch(link)
+                  .then(response => response.arrayBuffer())
+                  .catch(show_error);
+            
+            const rom_bytes = new Uint8Array(rom_buffer);
+            Module.ccall('load_rom_from_bytes',
+                         null,  // return type
+                         ['array', 'number'], // function parameter type
+                         [rom_bytes, rom_bytes.length]  // function args
+                        );
+        });
+      
+
+
+        // For changing the program IPF
+        ipf_form.addEventListener('submit', e => {
+            e.preventDefault();
+            if (!ipf.value) return;
+            const instructions_per_frame = Number(ipf.value);
+            if (isNaN(instructions_per_frame)) return;
+            em_set_ipf(instructions_per_frame);
+        });
+      function set_ipf(new_ipf) {
+          const sanitized_ipf = Math.floor(Math.abs(new_ipf));
+          ipf.value = String(sanitized_ipf);
+        console.log('SETTING IPF TO', sanitized_ipf);
+        Module.ccall('set_instructions_per_frame',
+            null,
+            ['number'],
+            [sanitized_ipf]);
       }
+
+      function set_rom_file(file_name) {
+          if (file_name === 'PONG2') {
+              set_ipf(20);
+          }
+          else if (file_name === 'maze.ch8') {
+              set_ipf(10);
+          }
+          else if (file_name === 'flightrunner.ch8') {
+              set_ipf(100);
+          }
+          else if (file_name === 'stars.ch8') {
+              set_ipf(50);
+          }
+          else if (file_name === 'Airplane.ch8') {
+              
+          }
+      }
+
+        function show_error(e) {
+            if (typeof e == 'string') {
+                throw new Error(e);
+            }
+            throw e;
+        }
     </script>
     <script src=chip8.js></script>
   </body>

@@ -1,38 +1,24 @@
 #include <cassert>
 #include <cstdint>
+#include <cstdio>
 #include <iostream>
-#include <fstream>
 #include <raylib.h>
 #include <cstddef>
 #include "state.h"
-
 #include "instruction.h"
 
-#if defined(PLATFORM_WEB)
-#include <emscripten/emscripten.h>
-static State *global_state = nullptr;
-extern "C" {
-EMSCRIPTEN_KEEPALIVE
-auto load_rom_from_path(const char *path) -> void {
-  if (!global_state)
-    return;
-  std::ifstream rom(path, std::ios::binary);
-  if (!rom.good()) {
-    std::print(std::cerr, "Error loading rom at {}", path);
-    return;
-  }
-  global_state->reset();
-  global_state->load_rom(rom);
-}
-}
-#endif
-
-// details from http://devernay.free.fr/hacks/chip8/C8TECH10.HTM
 using u8 = std::uint8_t;
 using u16 = std::uint16_t;
 
-void UpdateDrawFrame(State &state);
+#if defined(PLATFORM_WEB)
+#include <fstream>
+#include "ffi.h"
+#endif
 
+// details from http://devernay.free.fr/hacks/chip8/C8TECH10.HTM
+
+
+void UpdateDrawFrame(State &state);
 auto EmscriptenLoop(void *arg) -> void {
   UpdateDrawFrame(*static_cast<State*>(arg));
 }
@@ -42,10 +28,13 @@ auto main(void) -> int {
   const int pixel_size = 16;
   State state{pixel_size, 440.0f};
 
-
+  // for desktop, read in roms via stdin.
+  // eg. ./chip8 < pong.ch8 to run the pong program
 #if defined(PLATFORM_DESKTOP)
-  state.load_rom(std::cin);
+  state.load_rom(stdin);
 #else
+  // for web, start with pong as the program
+  // users can load in other roms with the ffi in "ffi.h"
   global_state = &state;
   std::ifstream rom("/roms/PONG2", std::ios::binary);
   state.load_rom(rom);
